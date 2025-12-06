@@ -11,4 +11,4 @@ Single pipeline (cmd1 | cmd2)
 Background jobs (&)
 SIGCHLD handler (reap zombies)
 SIGINT handler (Ctrl-C forwarding)
-Built-in exit, resource cleanup, valgrind
+Built-in exit, resource cleanup, valgrindd
