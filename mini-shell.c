@@ -6,110 +6,12 @@
 #include <sys/types.h> 
 #include <stdlib.h>
 #include <sys/wait.h>
+#include "include/parser.h"
+#include "include/execute.h"
 
 
-int tokenize(const char *line, char *tokens[]) {
-    int i = 0;      // position in line
-    int t = 0;      // number of tokens
-
-    while (line[i] != '\0') {
-
-        // Skip spaces
-        while (line[i] != '\0' && isspace((unsigned char)line[i])) {
-            i++;
-        }
-        if (line[i] == '\0') break;
-
-        // ---------------------------
-        // 1. Quoted strings
-        // ---------------------------
-        if (line[i] == '"' || line[i] == '\'') {
-            char quote = line[i];
-            int start, len;
-            char *word;
-
-            i++;            // skip opening quote
-            start = i;
-
-            while (line[i] != '\0' && line[i] != quote) {
-                i++;
-            }
-
-            len = i - start;
-            word = (char *)malloc(len + 1);
-            if (!word) return t; // out of memory, return what we have
-
-            memcpy(word, &line[start], len);
-            word[len] = '\0';
-
-            tokens[t++] = word;
-
-            if (line[i] == quote) i++;  // skip closing quote
-            continue;
-        }
-
-        // ---------------------------
-        // 2. Operators (&, |, <, >)
-        //    Support: &&, ||, >>, <<, and single ones
-        // ---------------------------
-        if (line[i] == '&' || line[i] == '|' || line[i] == '<' || line[i] == '>') {
-
-            char op[3] = {0, 0, 0}; // max 2 chars + '\0'
-            op[0] = line[i];
-
-            // Check two-character operators
-            if (line[i + 1] != '\0') {
-                if ((line[i] == '&' && line[i+1] == '&') || (line[i] == '|' && line[i+1] == '|') || (line[i] == '<' && line[i+1] == '<') || (line[i] == '>' && line[i+1] == '>')) {
-                    op[1] = line[i+1];
-                    i += 2;
-                } else {
-                    i += 1;
-                }
-            } else {
-                i += 1;
-            }
-
-            tokens[t++] = strdup(op);
-            // if (t >= max) break;
-            continue;
-        }
-
-        // ---------------------------
-        // 3. Normal word
-        // ---------------------------
-        {
-            int start = i;
-            int len;
-            char *word;
-
-            while (line[i] != '\0' &&  !isspace((unsigned char)line[i]) && line[i] != '&' && line[i] != '|' && line[i] != '<' && line[i] != '>') {
-                i++;
-            }
-
-            len = i - start;
-            if (len <= 0) continue;
-
-            word = (char *)malloc(len + 1);
-            if (!word) return t;
-
-            memcpy(word, &line[start], len);
-            word[len] = '\0';
-
-            tokens[t++] = word;
-        }
-    }
-
-    tokens[t] = NULL; // Null-terminate the tokens array
-    return t;
-}
-
-
-void free_tokens(char *tokens[], int count) {
-    int i;
-    for (i = 0; i < count; i++) {
-        free(tokens[i]);
-    }
-}
+int tokenize(const char *line, char *tokens[], int max_tokens);
+void free_tokens(char *tokens[], int count);
 
 char *trim(char *str) {
     if(str == NULL) {
@@ -127,68 +29,69 @@ char *trim(char *str) {
     return str;
 }
 
-// creates tokes
 // int tokens(char *line , char **argument_Name , int maximum_arguements){
 //     int arg_Count = 0;
 //     char *p = line;
-
 //     while(*p && arg_Count < maximum_arguements - 1){
 //         //this below line skips the starting spaces on any token
 //         while(isspace((unsigned char)*p)) p++; 
 //         // this checks if we have reached the end of the string
 //         if(*p == '\0') break; 
-
 //         // token is entered into argument_Name
 //         argument_Name[arg_Count++] = p;
 //         // move p to the end of the current token
 //         while(*p && !isspace((unsigned char)*p)) p++;
-        
 //         if(*p){
 //             // If whitespace found, turn it into '\0'
 //             *p = '\0'; 
 //             p++;
 //         }
-
 //     }
-    
 //     argument_Name[arg_Count] = NULL; 
 //     return arg_Count;
 // }
 
-int execution(char **argument_Name, int arg_Count){
-    int pid = fork();
-    if(pid < 0){
-        perror("Fork failed");
-        return -1;
-    } else if(pid == 0){
-        // Child process
-        if(execvp(argument_Name[0], argument_Name) < 0){
-            perror("Execution failed");
-           
-            exit(1);
-            
-        }
-    } else {
-        // Parent process
-        int status;
-        waitpid(pid, &status, 0);
-    }
-    return 0;
-}
+// int execution(char **argument_Name, int arg_Count){
+//     int pid = fork();
+//     if(pid < 0){
+//         perror("Fork failed");
+//         return -1;
+//     } else if(pid == 0){
+//         // Child process
+//         if(execvp(argument_Name[0], argument_Name) < 0){
+//             perror("Execution failed");      
+//             _exit(1);            
+//         }
+//     } else {
+//         // Parent process
+//         int status;
+//         waitpid(pid, &status, 0);
+//     }
+//     return 0;
+// }
 
 // directory traversing function later i wiil also implement auto complete feature for this
 int directory_traversing(char **argument_Name){
-    if(strcmp(argument_Name[0], "cd") == 0){
-            char *target_Dir = argument_Name[1]? argument_Name[1] : getenv("HOME");
-            if(!target_Dir){
-                target_Dir=".";
-            }
-            if(chdir(target_Dir) != 0){
-                perror("chdir failed");
-            }
-            return 1;        
-    } 
-    return 0;
+    if (strcmp(argument_Name[0], "cd") != 0) {
+        return 0; // not a cd command
+    }
+
+    char *target_Dir = NULL;
+
+    if (argument_Name[1] == NULL || strcmp(argument_Name[1], "~") == 0) {
+        target_Dir = getenv("HOME");
+    } else {
+        target_Dir = argument_Name[1];
+    }
+
+    if (target_Dir == NULL)
+        target_Dir = ".";
+
+    if (chdir(target_Dir) != 0) {
+        perror("cd");
+    }
+
+    return 1; // we handled a cd
 }
 
 int pwd_print(char **argument_Name){
@@ -201,17 +104,25 @@ int pwd_print(char **argument_Name){
     return 1;
 }
 
+void getCurrDir(char *buffer, size_t size){
+    if(getcwd(buffer, size)){
+        printf("%s $ ", buffer);
+    } else {
+        printf("$ ");
+        
+    }
+}
+
 int main() {
     
     while(1){
         char *read = NULL;
         size_t size = 0;
        char curr_working_dir[4000];
-       if(getcwd(curr_working_dir, sizeof(curr_working_dir))){
-           printf("%s $ ", curr_working_dir);
-       } else 
-       printf("$ ");
-       fflush(stdout);
+
+       getCurrDir(curr_working_dir, sizeof(curr_working_dir));
+       
+        fflush(stdout);
 
     //    if(fgets(read, sizeof(read), stdin) == NULL) {
     //        printf("\n");
@@ -237,25 +148,38 @@ int main() {
          }
 
         char *argument_list[100];
-        int arg_Count = tokenize(trimmed_input, argument_list);
+        int arg_Count = tokenize(trimmed_input, argument_list, 100);
+
+        
 
         if(arg_Count == 0) {
             free(read);
             continue;
         }
+
+        //tokeniser print for debugging
+        printf("---- Tokens ----\n");
         for(int i = 0; i < arg_Count; i++){
             printf("Argument %d: %s\n", i, argument_list[i]);
         }
-        // if(strcmp(argument_Name[0], "cd") == 0){
-        //     char *target_Dir = argument_Name[1]? argument_Name[1] : getenv("HOME");
-        //     if(!target_Dir){
-        //         target_Dir=".";
-        //     }
-        //     if(chdir(target_Dir) != 0){
-        //         perror("chdir failed");
-        //     }
-        //     continue;
-        // } 
+        printf("----------------\n");
+
+        command_t cmd;
+        if(parse_tokens(argument_list, arg_Count, &cmd) < 0){
+            free_tokens(argument_list, arg_Count);
+            free(read);
+            continue;
+        }
+        // DEBUG: see what parser understood
+        printf("---- Parsed Command ----\n");
+        for (int i = 0; cmd.argv[i] != NULL; i++) {
+            printf("argv[%d] = %s\n", i, cmd.argv[i]);
+        }
+        printf("infile:  %s\n", cmd.infile  ? cmd.infile  : "(none)");
+        printf("outfile: %s\n", cmd.outfile ? cmd.outfile : "(none)");
+        printf("------------------------\n");
+
+      
         int check = directory_traversing(argument_list);
         if(check == 1){
             free(read);
@@ -266,7 +190,7 @@ int main() {
             free(read);
             continue;
         }
-        int result = execution(argument_list, arg_Count);  
+        execute_cmd(&cmd);  
         free_tokens(argument_list, arg_Count);
         free(read);
     }

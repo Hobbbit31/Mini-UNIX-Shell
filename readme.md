@@ -67,3 +67,75 @@ WNOHANG	Non-blocking wait
 WUNTRACED	Return if child is stopped
 WCONTINUED	Return if child continued
 WNOWAIT (Linux specific)	Do not clear child, no zombie removal
+
+
+
+
+# Tokenizer Test Suite (README Format)
+
+This document serves as a test plan for validating the core tokenization logic of a custom shell implementation. The tests are categorized by complexity, covering standard functionality, error handling, and complex edge cases.
+
+---
+
+| Test No. | Section | Case (Input Command) | Purpose | Expected Output (Token List / Behavior) |
+| :---: | :--- | :--- | :--- | :--- |
+| **1.1** | **Basic Splitting** | `ls -l /home` | Simple argument separation. | `ls`, `-l`, `/home` |
+| **1.2** | **Basic Splitting** | `     echo     hello       world` | Handles multiple spaces and leading/trailing whitespace. | `echo`, `hello`, `world` |
+| **1.3** | **Basic Splitting** | `echo hello         ` | Handles trailing spaces at end of line. | `echo`, `hello` |
+| **2.1** | **Quoted Strings** | `echo "hello world"` | Preserves internal spaces as a single token. | `echo`, `hello world` |
+| **2.2** | **Quoted Strings** | `echo ""` | Handles an explicitly empty quoted string. | `echo`, `""` |
+| **2.3** | **Quoted Strings** | `ab"cd ef"gh` | Concatenation of adjacent quoted and unquoted segments. | `abcd efgh` |
+| **2.4** | **Quoted Strings** | `printf "%s\n"` | Quoted string containing special characters. | `printf`, `%s\n` |
+| **2.5** | **Quoted Strings** | `echo "$HOME is cool"` | Special characters inside quotes are treated literally by the tokenizer. | `echo`, `$HOME is cool` |
+| **3.1** | **Operator Splitting** | `ls | wc -l` | Standard pipe operator. | `ls`, `|`, `wc`, `-l` |
+| **3.2** | **Operator Splitting** | `cat < in.txt > out.txt` | Input and output redirections. | `cat`, `<`, `in.txt`, `>`, `out.txt` |
+| **3.3** | **Operator Splitting** | `ls>out` | Redirection adjacent to tokens (no space). | `ls`, `>`, `out` |
+| **3.4** | **Operator Splitting** | `sleep 10 &` | Background operator. | `sleep`, `10`, `&` |
+| **3.5** | **Operator Splitting** | `ls|grep abc|wc -l` | Multiple adjacent operators. | `ls`, `|`, `grep`, `abc`, `|`, `wc`, `-l` |
+| **4.1** | **Edge Cases** | `<>` | Two operators adjacent to each other. | `<`, `>` |
+| **4.2** | **Edge Cases** | `|` | Operator as the entire command. | `|` |
+| **4.3** | **Edge Cases** | `ls "a   b"     c` | Mixing quoted and unquoted spacing/arguments. | `ls`, `a   b`, `c` |
+| **4.4** | **Edge Cases** | `""` | Command is an empty quoted string. | `""` |
+| **4.5** | **Edge Cases** | `"hello world">out` | Quoted string immediately followed by an operator. | `hello world`, `>`, `out` |
+| **4.6** | **Edge Cases** | `"ab>cd" <"qq" | "rr"&` | Complex mixing of quotes and operators. | `ab>cd`, `<`, `qq`, `|`, `rr`, `&` |
+| **4.7** | **Edge Cases** | `&&&&&&&&&&&&&&&&&` | Stress test with repeated operators. | `&`, `&`, `&`, `&`, `&`, `&`, `&`, `&`, `&`, `&`, `&`, `&`, `&`, `&`, `&`, `&`, `&` |
+| **5.1** | **Negative/Error** | `"` | Single unmatched quote. | Error: `unmatched quote`, returns `NULL` |
+| **5.2** | **Negative/Error** | `echo "hello` | Missing closing quote mid-command. | Error: `unmatched quote`, returns `NULL` |
+| **5.3** | **Negative/Error** | `"abc def` | Unclosed quote with internal spaces. | Error: `unmatched quote`, returns `NULL` |
+| **6.1** | **Terminal Check** | `^[[A` (Arrow Up) | Terminal control sequence (should be handled by line editor). | No tokens, No segmentation fault |
+
+
+
+
+
+
+
+
+
+
+
+What this is and why we need it
+command_t is the structured command:
+argv → what you pass to execvp
+infile → if user wrote < file
+outfile → if user wrote > file
+init_command → makes sure we start from a clean state.
+free_command → avoids memory leaks.
+parse_tokens → converts a flat list of tokens (["ls","-l",">","out.txt"]) into a structured command_t.
+
+
+
+✅ 2. What strdup() does
+strdup():
+allocates memory on the heap (malloc)
+copies the string into that memory
+returns the pointer
+
+🔥 Why use strdup() instead of directly assigning?
+If you did:
+cmd->infile = tokens[i + 1];
+Then cmd->infile points to memory inside tokens[].
+If tokens gets freed or modified, cmd->infile breaks → dangling pointer.
+But with strdup():
+You get your own safe copy.
+It will remain valid until you free it.
