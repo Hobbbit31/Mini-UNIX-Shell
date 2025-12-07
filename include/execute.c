@@ -63,3 +63,105 @@ int execute_cmd(command_t *cmd){
         return -1;
     }
 }
+
+int run_pipeline(command_t *left, command_t *right){
+    if(left == NULL || right == NULL){
+        fprintf(stderr, "Error: pipeline cmd are null(execute.c)\n");
+        return -1;
+    }
+    int pipefd[2];
+    if(pipe(pipefd)<0){
+        perror("pipe(execute.c)");
+        return -1;
+    }
+
+    pid_t left_pid = fork();
+    if(left_pid < 0){
+        perror("fork for left cmd failed(execute.c)");
+        close(pipefd[0]);
+        close(pipefd[1]);
+        return -1;
+    }else if(left_pid == 0){
+        if(left->infile != NULL){
+            int fd = open(left->infile, O_RDONLY);
+            if(fd < 0){
+                perror("open infile(execute.c)");
+                _exit(1);
+            }
+            if(dup2(fd, 0) < 0){
+                perror("dup2 infile(execute.c)");
+                _exit(1);
+            }
+            close(fd);
+        }
+    
+        if(dup2(pipefd[1], 1) < 0){
+            perror("dup2 pipe write end(execute.c)");
+            _exit(1);
+        }
+        close(pipefd[0]);
+        close(pipefd[1]);
+
+
+        if(left->argv != NULL || left->argv[0] != NULL){
+             execvp(left->argv[0], left->argv);
+        }
+        perror("execvp left cmd(execute.c)");
+        _exit(1);
+    }
+
+    pid_t right_pid = fork();
+    if(right_pid < 0){
+        perror("fork for right cmd failed(execute.c)");
+        close(pipefd[0]);
+        close(pipefd[1]);
+
+        int tmp_status;
+        waitpid(left_pid, &tmp_status, 0);
+        return -1;
+    }else if(right_pid == 0){
+        if(dup2(pipefd[0], 0) < 0){
+            perror("dup2 pipe read end(execute.c)");
+            _exit(1);
+        }
+        close(pipefd[0]);
+        close(pipefd[1]);
+        if(right->outfile != NULL){
+            int flags = O_WRONLY | O_CREAT;
+            if(right->append){
+                flags |= O_APPEND;
+            } else {
+                flags |= O_TRUNC;
+            }
+
+            int fd = open(right->outfile, flags, 0666);
+            if(fd < 0){
+                perror("open outfile(execute.c)");
+                _exit(1);
+            }
+            if(dup2(fd, 1) < 0){
+                perror("dup2 outfile(execute.c)");
+                _exit(1);
+            }
+            close(fd);
+        }
+        if(right->argv != NULL || right->argv[0] != NULL){
+                execvp(right->argv[0], right->argv);
+        }
+        perror("execvp right cmd(execute.c)");
+        _exit(1);
+             
+    }
+    close(pipefd[0]);
+    close(pipefd[1]);
+
+    int status;
+    waitpid(left_pid, &status, 0);
+    waitpid(right_pid, &status, 0);
+    return 0;
+    
+
+
+
+    
+}

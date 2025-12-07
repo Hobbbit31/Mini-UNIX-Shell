@@ -150,8 +150,16 @@ int main() {
         char *argument_list[100];
         int arg_Count = tokenize(trimmed_input, argument_list, 100);
 
-        
-
+        int check = directory_traversing(argument_list);
+        if(check == 1){
+            free(read);
+            continue;
+        }
+        int check_pwd = pwd_print(argument_list);
+        if(check_pwd == 1){
+            free(read);
+            continue;
+        }
         if(arg_Count == 0) {
             free(read);
             continue;
@@ -188,6 +196,7 @@ int main() {
             free(read);
             continue;
         }
+        
         if(!is_pipeline){
             execute_cmd(&left);
             free_memory_cmd(&left);
@@ -215,6 +224,8 @@ int main() {
 
             // Execute pipeline
             // (Implementation of pipeline execution is not shown here)
+
+            run_pipeline(&left, &right);
             
             free_memory_cmd(&left);
             free_memory_cmd(&right);
@@ -229,16 +240,7 @@ int main() {
 
 
       
-        int check = directory_traversing(argument_list);
-        if(check == 1){
-            free(read);
-            continue;
-        }
-        int check_pwd = pwd_print(argument_list);
-        if(check_pwd == 1){
-            free(read);
-            continue;
-        }
+        
         
        
         free_tokens(argument_list, arg_Count);

@@ -110,7 +110,7 @@ int parse_line_to_check_pipeline(char *tokens[], int n, command_t *left_cmd, com
             if(strcmp(tokens[i], "|") == 0){
                 // check for multiple pipelines
                 if(piperlineindex != -1){
-                    fprintf(stderr, "Syntax Error: Multiple pipelines not supported\n");
+                    fprintf(stderr, "(parser.c)Multiple pipelines not supported\n");
                     return -1;
                 }
                 piperlineindex = i;
