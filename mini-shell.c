@@ -164,20 +164,69 @@ int main() {
         }
         printf("----------------\n");
 
-        command_t cmd;
-        if(parse_tokens(argument_list, arg_Count, &cmd) < 0){
+        // command_t cmd;
+        // if(parse_tokens(argument_list, arg_Count, &cmd) < 0){
+        //     free_tokens(argument_list, arg_Count);
+        //     free(read);
+        //     continue;
+        // }
+        // // DEBUG: see what parser understood
+        // printf("---- Parsed Command ----\n");
+        // for (int i = 0; cmd.argv[i] != NULL; i++) {
+        //     printf("argv[%d] = %s\n", i, cmd.argv[i]);
+        // }
+        // printf("infile:  %s\n", cmd.infile  ? cmd.infile  : "(none)");
+        // printf("outfile: %s\n", cmd.outfile ? cmd.outfile : "(none)");
+        // printf("------------------------\n");
+
+        command_t left , right;
+        int is_pipeline = 0;
+
+        int check_pipeline = parse_line_to_check_pipeline(argument_list, arg_Count, &left, &right, &is_pipeline);
+        if(check_pipeline < 0){
             free_tokens(argument_list, arg_Count);
             free(read);
             continue;
         }
-        // DEBUG: see what parser understood
-        printf("---- Parsed Command ----\n");
-        for (int i = 0; cmd.argv[i] != NULL; i++) {
-            printf("argv[%d] = %s\n", i, cmd.argv[i]);
+        if(!is_pipeline){
+            execute_cmd(&left);
+            free_memory_cmd(&left);
+            
+            
+            
+        }else{
+            // DEBUG: see what parser understood for left command
+            printf("---- Left Command ----\n");
+            for (int i = 0; left.argv[i] != NULL; i++) {
+                printf("argv[%d] = %s\n", i, left.argv[i]);
+            }
+            printf("infile:  %s\n", left.infile  ? left.infile  : "(none)");
+            printf("outfile: %s\n", left.outfile ? left.outfile : "(none)");
+            printf("------------------------\n");
+
+            // DEBUG: see what parser understood for right command
+            printf("---- Right Command ----\n");
+            for (int i = 0; right.argv[i] != NULL; i++) {
+                printf("argv[%d] = %s\n", i, right.argv[i]);
+            }
+            printf("infile:  %s\n", right.infile  ? right.infile  : "(none)");
+            printf("outfile: %s\n", right.outfile ? right.outfile : "(none)");
+            printf("------------------------\n");
+
+            // Execute pipeline
+            // (Implementation of pipeline execution is not shown here)
+            
+            free_memory_cmd(&left);
+            free_memory_cmd(&right);
+          
+            
+            
+
         }
-        printf("infile:  %s\n", cmd.infile  ? cmd.infile  : "(none)");
-        printf("outfile: %s\n", cmd.outfile ? cmd.outfile : "(none)");
-        printf("------------------------\n");
+
+
+
+
 
       
         int check = directory_traversing(argument_list);
@@ -190,7 +239,8 @@ int main() {
             free(read);
             continue;
         }
-        execute_cmd(&cmd);  
+        
+       
         free_tokens(argument_list, arg_Count);
         free(read);
     }

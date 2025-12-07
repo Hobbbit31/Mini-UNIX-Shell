@@ -102,7 +102,54 @@ int parse_tokens(char *tokens[], int nummber_of_tokens, command_t *cmd){
     cmd->argv[arg_index] = NULL;
     return 0;
 
-    
+}
+int parse_line_to_check_pipeline(char *tokens[], int n, command_t *left_cmd, command_t *right_cmd, int *is_pipeline){
+        int piperlineindex = -1;
+
+        for(int i = 0; i < n; i++){
+            if(strcmp(tokens[i], "|") == 0){
+                // check for multiple pipelines
+                if(piperlineindex != -1){
+                    fprintf(stderr, "Syntax Error: Multiple pipelines not supported\n");
+                    return -1;
+                }
+                piperlineindex = i;
+                
+                
+            }
+        }
+
+        if(piperlineindex == -1){
+            *is_pipeline = 0;
+            if(parse_tokens(tokens, n, left_cmd)<0){
+                return -1;
+            }
+            return 0;
+            
+        }
+
+
+        if(piperlineindex == 0 || piperlineindex == n - 1){
+            fprintf(stderr, "Syntax Error: pipelin | can,t be at the beg or the end.\n");
+            return -1;
+        }
+
+        *is_pipeline = 1;
+        int left_size = piperlineindex;
+        int right_size = n - piperlineindex - 1;
+
+
+        if(parse_tokens(tokens, left_size, left_cmd)<0){
+            return -1;
+        }
+
+        if(parse_tokens(tokens + left_size + 1, right_size, right_cmd)<0){
+
+            free_memory_cmd(left_cmd);
+            return -1;
+
+        }
+        return 1;
 
 }
 

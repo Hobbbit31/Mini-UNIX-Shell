@@ -1,6 +1,11 @@
-hello
-asd
-asd
-ad
-asd
-asd
+checkpoint.md
+fork_and_execp.md
+include
+Makefile
+mini-shell
+mini-shell.c
+out.txt
+parer.md
+pipeline.md
+readme.md
+v1.c
