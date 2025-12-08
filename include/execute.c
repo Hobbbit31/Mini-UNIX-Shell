@@ -2,6 +2,7 @@
 #include "parser.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <unistd.h> // fork, execvp, dup2, _exit, close
 #include <sys/types.h>  // pid_t
 #include <sys/wait.h>
@@ -20,6 +21,8 @@ int execute_cmd(command_t *cmd){
 
     if(pid == 0){
         // child process
+
+        signal(SIGINT, SIG_DFL);   // child gets normal Ctrl-C
 
         if(cmd->infile){
             int fd = open(cmd->infile, O_RDONLY);
@@ -93,6 +96,8 @@ int run_pipeline(command_t *left, command_t *right){
         close(pipefd[1]);
         return -1;
     }else if(left_pid == 0){
+
+        signal(SIGINT, SIG_DFL);   // child gets normal Ctrl-C
         if(left->infile != NULL){
             int fd = open(left->infile, O_RDONLY);
             if(fd < 0){
@@ -133,6 +138,11 @@ int run_pipeline(command_t *left, command_t *right){
         waitpid(left_pid, &tmp_status, 0);
         return -1;
     }else if(right_pid == 0){
+
+        signal(SIGINT, SIG_DFL);   // child gets normal Ctrl-C
+
+        
+
         if(dup2(pipefd[0], 0) < 0){
             perror("dup2 pipe read end(execute.c)");
             _exit(1);

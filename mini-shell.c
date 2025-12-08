@@ -5,6 +5,7 @@
 #include <string.h> 
 #include <sys/types.h> 
 #include <stdlib.h>
+#include <signal.h>
 #include <sys/wait.h>
 #include "include/parser.h"
 #include "include/execute.h"
@@ -12,6 +13,27 @@
 
 int tokenize(const char *line, char *tokens[], int max_tokens);
 void free_tokens(char *tokens[], int count);
+
+// zommbie process clean up handler, WNOHANG is wait no hang
+void handle_zoombie(){
+    int pid;
+    
+    while((pid = waitpid(-1, NULL, WNOHANG)) > 0){
+       
+        
+    }
+    
+}
+
+void sigint_handler(int sig) {
+
+    write(STDOUT_FILENO, "\n", 1);
+    
+    char curr_working_dir[4000];
+    getCurrDir(curr_working_dir, sizeof(curr_working_dir));
+
+
+}
 
 char *trim(char *str) {
     if(str == NULL) {
@@ -70,18 +92,28 @@ void getCurrDir(char *buffer, size_t size){
         printf("$ ");
         
     }
+    fflush(stdout);
 }
 
 int main() {
+
+    signal(SIGCHLD, handle_zoombie);
+    signal(SIGINT, sigint_handler); // custom handler for Ctrl+C in main shell process
     
     while(1){
+
+
         char *read = NULL;
         size_t size = 0;
        char curr_working_dir[4000];
 
+
+
+       
+
        getCurrDir(curr_working_dir, sizeof(curr_working_dir));
        
-        fflush(stdout);
+        
 
        if(getline(&read, &size, stdin) == -1) {
            printf("\n");

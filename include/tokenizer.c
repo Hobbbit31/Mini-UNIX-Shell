@@ -30,7 +30,7 @@ int tokenize(const char *line, char *tokens[], int max_tokens) {
 
             if(line[i]!= quote){
                 
-                fprintf(stderr, "Error: unmatched quote\n");
+                printf("Error: unmatched quote\n");
 
                 break;
             }
