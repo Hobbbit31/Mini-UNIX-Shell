@@ -9,10 +9,66 @@
 #include <sys/wait.h>
 #include "include/parser.h"
 #include "include/execute.h"
+#include "include/history.h"
+
+#define HistorySize 25
+char *buffer[HistorySize];
+int buf_count = 0;
 
 
 int tokenize(const char *line, char *tokens[], int max_tokens);
 void free_tokens(char *tokens[], int count);
+
+
+
+static int validate_tokens_for_basic_errors(char *tokens[], int n) {
+    if (tokens == NULL) {
+        printf("(vtbe)Validation error: tokens is NULL\n");
+        return -1;
+    }
+    if (n <= 0) {
+        printf("(vtbe)Validation error: empty command\n");
+        return -1;
+    }
+    if (strcmp(tokens[0], "|") == 0) {
+        printf("(vtbe)Syntax error: '|' cannot be at the start\n");
+        return -1;
+    }
+    if (strcmp(tokens[n-1], "|") == 0) {
+        printf("(vtbe)Syntax error: '|' cannot be at the end\n");
+        return -1;
+    }
+    for (int i = 0; i < n; ++i) {
+
+        if(strcmp(tokens[i], "||") == 0 || strcmp(tokens[i], "&&") == 0 || (strcmp(tokens[i], ">>") == 0 && (strcmp(tokens[i+1], ">") == 0 || strcmp(tokens[i+1], ">>") == 0) )) {
+            
+            if(strcmp(tokens[i+1], ">>") == 0){
+                printf("(vtbe)Syntax error: '>>>>' operator not supported\n");
+                return -1;
+            }
+            if(strcmp(tokens[i+1], ">") == 0){
+                printf("(vtbe)Syntax error: '>>>' operator not supported\n");
+                return -1;
+            }
+            
+            
+            printf("(vtbe)Syntax error: '%s' operator not supported\n", tokens[i]);
+            return -1;
+        }
+        if (strcmp(tokens[i], "<") == 0 || strcmp(tokens[i], ">") == 0 || strcmp(tokens[i], ">>") == 0) {
+            if (i + 1 >= n) {
+                printf("(vtbe)Syntax error: missing filename after '%s'\n", tokens[i]);
+                return -1;
+            }
+            if (tokens[i+1][0] == '\0') {
+                printf("(vtbe)Syntax error: invalid filename after '%s'\n", tokens[i]);
+                return -1;
+            }
+        }
+    }
+    return 0;
+}
+
 
 // zommbie process clean up handler, WNOHANG is wait no hang
 void handle_zoombie(){
@@ -28,7 +84,7 @@ void handle_zoombie(){
 void sigint_handler(int sig) {
 
     write(STDOUT_FILENO, "\n", 1);
-    
+
     char curr_working_dir[4000];
     getCurrDir(curr_working_dir, sizeof(curr_working_dir));
 
@@ -71,6 +127,7 @@ int directory_traversing(char **argument_Name){
     if(chdir(target_Dir) != 0) {
         perror("cd");
     }
+    addToHistory(argument_Name[0]);
 
     return 1; // we handled a cd
 }
@@ -96,6 +153,7 @@ void getCurrDir(char *buffer, size_t size){
 }
 
 int main() {
+    initHistory();
 
     signal(SIGCHLD, handle_zoombie);
     signal(SIGINT, sigint_handler); // custom handler for Ctrl+C in main shell process
@@ -105,11 +163,7 @@ int main() {
 
         char *read = NULL;
         size_t size = 0;
-       char curr_working_dir[4000];
-
-
-
-       
+       char curr_working_dir[4000];  
 
        getCurrDir(curr_working_dir, sizeof(curr_working_dir));
        
@@ -120,19 +174,49 @@ int main() {
            free(read);
            break;
        }
+
+
        char *trimmed_input = trim(read);
 
        if(strlen(trimmed_input) == 0){
             free(read);
            continue;
        }
+
+       if(strcmp(trimmed_input, "history") == 0) {
+            printHistory();
+           addToHistory(trimmed_input);
+           
+           free(read);
+           continue;
+       }
+        if(strcmp(trimmed_input, "history -c") == 0) {
+            clearHistory();
+            addToHistory(trimmed_input);
+            
+            free(read);
+            continue;
+        }
          if(strcmp(trimmed_input, "exit") == 0) {
+            addToHistory(trimmed_input);
               free(read);
               break;
          }
 
+        
+
         char *argument_list[100];
         int arg_Count = tokenize(trimmed_input, argument_list, 100);
+
+        if(arg_Count == 0) {
+            free(read);
+            continue;
+        }
+        if(validate_tokens_for_basic_errors(argument_list, arg_Count) < 0) {
+            free_tokens(argument_list, arg_Count);
+            free(read);
+            continue;
+        }
 
         int check = directory_traversing(argument_list);
         if(check == 1){
@@ -144,10 +228,7 @@ int main() {
             free(read);
             continue;
         }
-        if(arg_Count == 0) {
-            free(read);
-            continue;
-        }
+        
 
         //tokeniser print for debugging
         printf("---- Tokens ----\n");
@@ -183,6 +264,7 @@ int main() {
         
         if(!is_pipeline){
             execute_cmd(&left);
+            addToHistory(trimmed_input);
             free_memory_cmd(&left);
             
             
@@ -210,6 +292,7 @@ int main() {
             // (Implementation of pipeline execution is not shown here)
 
             run_pipeline(&left, &right);
+            addToHistory(trimmed_input);
             
             free_memory_cmd(&left);
             free_memory_cmd(&right);
@@ -221,6 +304,8 @@ int main() {
         free_tokens(argument_list, arg_Count);
         free(read);
     }
+
+    freeHistory();
     
     return 0;
 }

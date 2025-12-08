@@ -35,18 +35,20 @@ int parse_tokens(char *tokens[], int nummber_of_tokens, command_t *cmd){
     int argument_count = 0;
     int i = 0; //fortraversing through 
 
-    for(int j = 0 ; j<nummber_of_tokens ; j++){
-        if(strcmp(tokens[j], "&") == 0){
-            printf("Parser.c error : & should be at the end of the command.\n");
-            free_memory_cmd(cmd);
-            return -1;
-        }
-    }
+    // for(int j = 0 ; j<nummber_of_tokens ; j++){
+    //     if(strcmp(tokens[j], "&") == 0){
+    //         printf("Parser.c error : & should be at the end of the command.\n");
+    //         free_memory_cmd(cmd);
+    //         return -1;
+    //     }
+    // }
 
 
 
     // first pass: count arguemtn and assifn the storeage 
     while(i < nummber_of_tokens){
+
+        
         if((strcmp(tokens[i], "<")) == 0 || strcmp(tokens[i], ">") == 0|| strcmp(tokens[i], ">>") == 0){
 
             if(i + 1 >= nummber_of_tokens){
