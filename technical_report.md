@@ -1,4 +1,4 @@
-# Mini Shell – Detailed Technical Report
+# Mini Shell – Technical Report
 
 ## 1. Introduction
 This technical report explains the internal design, algorithms, and system programming concepts used to build the Mini Shell.  
