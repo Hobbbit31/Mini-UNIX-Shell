@@ -29,65 +29,24 @@ char *trim(char *str) {
     return str;
 }
 
-// int tokens(char *line , char **argument_Name , int maximum_arguements){
-//     int arg_Count = 0;
-//     char *p = line;
-//     while(*p && arg_Count < maximum_arguements - 1){
-//         //this below line skips the starting spaces on any token
-//         while(isspace((unsigned char)*p)) p++; 
-//         // this checks if we have reached the end of the string
-//         if(*p == '\0') break; 
-//         // token is entered into argument_Name
-//         argument_Name[arg_Count++] = p;
-//         // move p to the end of the current token
-//         while(*p && !isspace((unsigned char)*p)) p++;
-//         if(*p){
-//             // If whitespace found, turn it into '\0'
-//             *p = '\0'; 
-//             p++;
-//         }
-//     }
-//     argument_Name[arg_Count] = NULL; 
-//     return arg_Count;
-// }
-
-// int execution(char **argument_Name, int arg_Count){
-//     int pid = fork();
-//     if(pid < 0){
-//         perror("Fork failed");
-//         return -1;
-//     } else if(pid == 0){
-//         // Child process
-//         if(execvp(argument_Name[0], argument_Name) < 0){
-//             perror("Execution failed");      
-//             _exit(1);            
-//         }
-//     } else {
-//         // Parent process
-//         int status;
-//         waitpid(pid, &status, 0);
-//     }
-//     return 0;
-// }
-
 // directory traversing function later i wiil also implement auto complete feature for this
 int directory_traversing(char **argument_Name){
-    if (strcmp(argument_Name[0], "cd") != 0) {
+    if(strcmp(argument_Name[0], "cd") != 0) {
         return 0; // not a cd command
     }
 
     char *target_Dir = NULL;
 
-    if (argument_Name[1] == NULL || strcmp(argument_Name[1], "~") == 0) {
+    if(argument_Name[1] == NULL || strcmp(argument_Name[1], "~") == 0) {
         target_Dir = getenv("HOME");
-    } else {
+    }else{
         target_Dir = argument_Name[1];
     }
 
-    if (target_Dir == NULL)
+    if(target_Dir == NULL)
         target_Dir = ".";
 
-    if (chdir(target_Dir) != 0) {
+    if(chdir(target_Dir) != 0) {
         perror("cd");
     }
 
@@ -124,13 +83,6 @@ int main() {
        
         fflush(stdout);
 
-    //    if(fgets(read, sizeof(read), stdin) == NULL) {
-    //        printf("\n");
-           
-    //           break; 
-    //         //   break or the work of ctrl + c done by ctrl + d
-    //    }
-      
        if(getline(&read, &size, stdin) == -1) {
            printf("\n");
            free(read);
@@ -230,17 +182,8 @@ int main() {
             free_memory_cmd(&left);
             free_memory_cmd(&right);
           
-            
-            
-
-        }
-
-
-
-
-
-      
         
+        }
         
        
         free_tokens(argument_list, arg_Count);

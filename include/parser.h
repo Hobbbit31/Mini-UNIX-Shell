@@ -5,7 +5,8 @@ typedef struct {
     char **argv;    // NULL-terminated argument list
     char *infile;   
     char *outfile;
-    int append;   
+    int append;
+    int background;   
 } command_t;
 
 // Initialize fields to NULL
